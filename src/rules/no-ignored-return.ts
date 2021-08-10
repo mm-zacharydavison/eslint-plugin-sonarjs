@@ -233,11 +233,12 @@ const rule: Rule.RuleModule = {
     const services = context.parserServices;
     return {
       CallExpression: (node: TSESTree.Node) => {
+        const CANDIDATE_PARENTS = ['ExpressionStatement', 'CallExpression']
         const call = node as TSESTree.CallExpression;
         const { callee } = call;
         if (callee.type === 'Identifier') {
           const { parent } = node;
-          if (parent && parent.type === 'ExpressionStatement') {
+          if (parent && CANDIDATE_PARENTS.includes(parent.type)) {
             const functionName = callee.name;
             if (isCustomFunction(functionName, customBlacklist)) {
               context.report({

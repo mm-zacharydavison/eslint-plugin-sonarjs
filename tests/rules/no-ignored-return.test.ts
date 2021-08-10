@@ -252,5 +252,19 @@ ruleTester.run('Return values from functions without side effects should not be 
       options: [{ custom: { functions: ['myFunction'] } }],
       errors: 1,
     },
+    {
+      filename,
+      code: `
+      import { createAction } from 'action-creators'
+
+      const middleware: Middleware = ({ dispatch, getState }) => {
+        return next => action => {
+          createAction(Action.MY_ACTION)(dispatch, getState, client)
+        }
+      }
+      `,
+      options: [{ custom: { functions: ['createAction'] } }],
+      errors: 1
+    }
   ],
 });
