@@ -27,8 +27,7 @@
     "precommit": "lint-staged && npm run typecheck",
     "prepack": "npm run build",
     "format": "prettier --write \"{src,tests}/**/*.ts\"",
-    "check-format": "prettier --list-different \"{src,tests}/**/*.ts\"",
-    "postinstall": "npm run build"
+    "check-format": "prettier --list-different \"{src,tests}/**/*.ts\""
   },
   "peerDependencies": {
     "eslint": "^5.0.0 || ^6.0.0 || ^7.0.0"
