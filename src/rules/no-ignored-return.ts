@@ -25,7 +25,7 @@ import { Rule } from '../utils/types';
 import docsUrl from '../utils/docs-url';
 import { getTypeFromTreeNode } from '../utils';
 
-type MethodMap = { [index: string]: Set<string> }
+type MethodMap = { [index: string]: Set<string> };
 
 const METHODS_WITHOUT_SIDE_EFFECTS: MethodMap = {
   array: new Set([
@@ -171,23 +171,23 @@ const METHODS_WITHOUT_SIDE_EFFECTS: MethodMap = {
     'strike',
     'sub',
     'sup',
-  ])
+  ]),
 };
 
 namespace Options {
   export interface CustomBlacklist {
-    custom: { 
-      methods: { [index: string]: string[] }, 
-      functions: string[] 
-    }
+    custom: {
+      methods: { [index: string]: string[] };
+      functions: string[];
+    };
   }
 }
 
 interface CustomBlacklist {
-  custom: { 
-    methods: MethodMap, 
-    functions: string[] 
-  }
+  custom: {
+    methods: MethodMap;
+    functions: string[];
+  };
 }
 
 const rule: Rule.RuleModule = {
@@ -200,7 +200,7 @@ const rule: Rule.RuleModule = {
       url: docsUrl(__filename),
     },
     schema: [
-      { 
+      {
         type: 'object',
         properties: {
           custom: {
@@ -208,28 +208,28 @@ const rule: Rule.RuleModule = {
             properties: {
               methods: {
                 type: 'object',
-                additionalProperties: { 
+                additionalProperties: {
                   type: 'array',
-                  items: { type: 'string' }
+                  items: { type: 'string' },
                 },
-                default: {}
+                default: {},
               },
               functions: {
                 type: 'array',
                 items: { type: 'string' },
-                default: []
-              }
-            }
-          }
-        }
-      }
-    ]
+                default: [],
+              },
+            },
+          },
+        },
+      },
+    ],
   },
   create(context: Rule.RuleContext) {
     if (!isRequiredParserServices(context.parserServices)) {
       return {};
     }
-    let customBlacklist = loadCustomBlacklist(context)
+    let customBlacklist = loadCustomBlacklist(context);
     const services = context.parserServices;
     return {
       CallExpression: (node: TSESTree.Node) => {
@@ -238,14 +238,12 @@ const rule: Rule.RuleModule = {
         if (callee.type === 'Identifier') {
           const { parent } = node;
           if (parent && parent.type === 'ExpressionStatement') {
-            const functionName = callee.name
-            if (
-              isCustomFunction(functionName, customBlacklist)
-            ) {
+            const functionName = callee.name;
+            if (isCustomFunction(functionName, customBlacklist)) {
               context.report({
                 message: message(functionName),
                 node,
-              })
+              });
             }
           }
         }
@@ -299,38 +297,64 @@ function message(methodName: string): string {
 }
 
 function loadCustomBlacklist(context: Rule.RuleContext): CustomBlacklist {
-  const customBlacklistOption = context.options.find(option => (option as Options.CustomBlacklist).custom) as Options.CustomBlacklist
-  const option = customBlacklistOption || { custom: { methods: {}, functions: [] } }
+  const customBlacklistOption = context.options.find(
+    option => (option as Options.CustomBlacklist).custom,
+  ) as Options.CustomBlacklist;
+  const option = customBlacklistOption || { custom: { methods: {}, functions: [] } };
   return {
     custom: {
-      methods: Object.entries(option.custom.methods).reduce((p, [k, v]) => ({ ...p, [k]: new Set(v) }), {}),
-      functions: option.custom.functions
-    }
-  }
+      methods: Object.entries(option.custom.methods).reduce(
+        (p, [k, v]) => ({ ...p, [k]: new Set(v) }),
+        {},
+      ),
+      functions: option.custom.functions,
+    },
+  };
 }
 
-function isBlacklistedMethod(methodName: string, objectType: any, services: RequiredParserServices, customBlacklist: CustomBlacklist): boolean {
-  return isDefaultBlacklisted(methodName, objectType, services) 
-    || isCustomMethod(methodName, objectType, services, customBlacklist)
+function isBlacklistedMethod(
+  methodName: string,
+  objectType: any,
+  services: RequiredParserServices,
+  customBlacklist: CustomBlacklist,
+): boolean {
+  return (
+    isDefaultBlacklisted(methodName, objectType, services) ||
+    isCustomMethod(methodName, objectType, services, customBlacklist)
+  );
 }
 
-function isDefaultBlacklisted(methodName: string, objectType: any, services: RequiredParserServices) {
-  return methodExistsInMethodMap(methodName, objectType, services, METHODS_WITHOUT_SIDE_EFFECTS)
+function isDefaultBlacklisted(
+  methodName: string,
+  objectType: any,
+  services: RequiredParserServices,
+) {
+  return methodExistsInMethodMap(methodName, objectType, services, METHODS_WITHOUT_SIDE_EFFECTS);
 }
 
-function isCustomMethod(methodName: string, objectType: any, services: RequiredParserServices, customBlacklist: CustomBlacklist): boolean {
-  return methodExistsInMethodMap(methodName, objectType, services, customBlacklist.custom.methods)
+function isCustomMethod(
+  methodName: string,
+  objectType: any,
+  services: RequiredParserServices,
+  customBlacklist: CustomBlacklist,
+): boolean {
+  return methodExistsInMethodMap(methodName, objectType, services, customBlacklist.custom.methods);
 }
 
 function isCustomFunction(functionName: string, customBlacklist: CustomBlacklist): boolean {
-  return customBlacklist.custom.functions.includes(functionName)
+  return customBlacklist.custom.functions.includes(functionName);
 }
 
-function methodExistsInMethodMap(methodName: string, objectType: any, services: RequiredParserServices, methodMap: MethodMap): boolean {
+function methodExistsInMethodMap(
+  methodName: string,
+  objectType: any,
+  services: RequiredParserServices,
+  methodMap: MethodMap,
+): boolean {
   const typeAsString = typeToString(objectType, services);
   if (typeAsString !== null) {
     const methods = methodMap[typeAsString];
-    return (methods !== undefined && methods.has(methodName));
+    return methods !== undefined && methods.has(methodName);
   }
   return false;
 }

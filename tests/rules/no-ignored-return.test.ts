@@ -112,7 +112,7 @@ ruleTester.run('Return values from functions without side effects should not be 
       const instance = new MyClass()
       const foo = instance.myMethod()
       `,
-      options: [{ custom: { methods: { MyClass: ['myMethod'] }}}]
+      options: [{ custom: { methods: { MyClass: ['myMethod'] } } }],
     },
     {
       filename,
@@ -120,8 +120,8 @@ ruleTester.run('Return values from functions without side effects should not be 
       function myFunction() { return 1 }
       const foo = myFunction()
       `,
-      options: [{ custom: { functions: ['myFunction'] }}],
-    }
+      options: [{ custom: { functions: ['myFunction'] } }],
+    },
   ],
   invalid: [
     {
@@ -231,8 +231,8 @@ ruleTester.run('Return values from functions without side effects should not be 
       const instance = new MyClass()
       instance.myMethod()
       `,
-      options: [{ custom: { methods: { MyClass: ['myMethod'] }}}],
-      errors: 1
+      options: [{ custom: { methods: { MyClass: ['myMethod'] } } }],
+      errors: 1,
     },
     {
       filename,
@@ -240,8 +240,17 @@ ruleTester.run('Return values from functions without side effects should not be 
       function myFunction() { return 1 }
       myFunction()
       `,
-      options: [{ custom: { functions: ['myFunction'] }}],
-      errors: 1
-    }
+      options: [{ custom: { functions: ['myFunction'] } }],
+      errors: 1,
+    },
+    {
+      filename,
+      code: `
+      import { myFunction } from 'some-module'
+      myFunction()
+      `,
+      options: [{ custom: { functions: ['myFunction'] } }],
+      errors: 1,
+    },
   ],
 });
