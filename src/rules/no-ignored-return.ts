@@ -229,7 +229,7 @@ const rule: Rule.RuleModule = {
     if (!isRequiredParserServices(context.parserServices)) {
       return {};
     }
-    let customBlacklist = loadCustomBlacklist(context);
+    const customBlacklist = loadCustomBlacklist(context);
     const services = context.parserServices;
     return {
       CallExpression: (node: TSESTree.Node) => {
