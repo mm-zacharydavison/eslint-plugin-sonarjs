@@ -25,7 +25,9 @@ import { Rule } from '../utils/types';
 import docsUrl from '../utils/docs-url';
 import { getTypeFromTreeNode } from '../utils';
 
-const METHODS_WITHOUT_SIDE_EFFECTS: { [index: string]: Set<string> } = {
+type MethodMap = { [index: string]: Set<string> }
+
+const METHODS_WITHOUT_SIDE_EFFECTS: MethodMap = {
   array: new Set([
     'concat',
     'includes',
@@ -169,8 +171,24 @@ const METHODS_WITHOUT_SIDE_EFFECTS: { [index: string]: Set<string> } = {
     'strike',
     'sub',
     'sup',
-  ]),
+  ])
 };
+
+namespace Options {
+  export interface CustomBlacklist {
+    custom: { 
+      methods: { [index: string]: string[] }, 
+      functions: string[] 
+    }
+  }
+}
+
+interface CustomBlacklist {
+  custom: { 
+    methods: MethodMap, 
+    functions: string[] 
+  }
+}
 
 const rule: Rule.RuleModule = {
   meta: {
@@ -181,16 +199,56 @@ const rule: Rule.RuleModule = {
       recommended: 'error',
       url: docsUrl(__filename),
     },
+    schema: [
+      { 
+        type: 'object',
+        properties: {
+          custom: {
+            type: 'object',
+            properties: {
+              methods: {
+                type: 'object',
+                additionalProperties: { 
+                  type: 'array',
+                  items: { type: 'string' }
+                },
+                default: {}
+              },
+              functions: {
+                type: 'array',
+                items: { type: 'string' },
+                default: []
+              }
+            }
+          }
+        }
+      }
+    ]
   },
   create(context: Rule.RuleContext) {
     if (!isRequiredParserServices(context.parserServices)) {
       return {};
     }
+    let customBlacklist = loadCustomBlacklist(context)
     const services = context.parserServices;
     return {
       CallExpression: (node: TSESTree.Node) => {
         const call = node as TSESTree.CallExpression;
         const { callee } = call;
+        if (callee.type === 'Identifier') {
+          const { parent } = node;
+          if (parent && parent.type === 'ExpressionStatement') {
+            const functionName = callee.name
+            if (
+              isCustomFunction(functionName, customBlacklist)
+            ) {
+              context.report({
+                message: message(functionName),
+                node,
+              })
+            }
+          }
+        }
         if (callee.type === 'MemberExpression') {
           const { parent } = node;
           if (parent && parent.type === 'ExpressionStatement') {
@@ -201,7 +259,7 @@ const rule: Rule.RuleModule = {
                 services.esTreeNodeToTSNodeMap.get(callee.object as TSESTree.Node),
               );
             if (
-              !hasSideEffect(methodName, objectType, services) &&
+              isBlacklistedMethod(methodName, objectType, services, customBlacklist) &&
               !isReplaceWithCallback(methodName, call.arguments, services)
             ) {
               context.report({
@@ -240,13 +298,41 @@ function message(methodName: string): string {
   }
 }
 
-function hasSideEffect(methodName: string, objectType: any, services: RequiredParserServices) {
+function loadCustomBlacklist(context: Rule.RuleContext): CustomBlacklist {
+  const customBlacklistOption = context.options.find(option => (option as Options.CustomBlacklist).custom) as Options.CustomBlacklist
+  const option = customBlacklistOption || { custom: { methods: {}, functions: [] } }
+  return {
+    custom: {
+      methods: Object.entries(option.custom.methods).reduce((p, [k, v]) => ({ ...p, [k]: new Set(v) }), {}),
+      functions: option.custom.functions
+    }
+  }
+}
+
+function isBlacklistedMethod(methodName: string, objectType: any, services: RequiredParserServices, customBlacklist: CustomBlacklist): boolean {
+  return isDefaultBlacklisted(methodName, objectType, services) 
+    || isCustomMethod(methodName, objectType, services, customBlacklist)
+}
+
+function isDefaultBlacklisted(methodName: string, objectType: any, services: RequiredParserServices) {
+  return methodExistsInMethodMap(methodName, objectType, services, METHODS_WITHOUT_SIDE_EFFECTS)
+}
+
+function isCustomMethod(methodName: string, objectType: any, services: RequiredParserServices, customBlacklist: CustomBlacklist): boolean {
+  return methodExistsInMethodMap(methodName, objectType, services, customBlacklist.custom.methods)
+}
+
+function isCustomFunction(functionName: string, customBlacklist: CustomBlacklist): boolean {
+  return customBlacklist.custom.functions.includes(functionName)
+}
+
+function methodExistsInMethodMap(methodName: string, objectType: any, services: RequiredParserServices, methodMap: MethodMap): boolean {
   const typeAsString = typeToString(objectType, services);
   if (typeAsString !== null) {
-    const methods = METHODS_WITHOUT_SIDE_EFFECTS[typeAsString];
-    return !(methods && methods.has(methodName));
+    const methods = methodMap[typeAsString];
+    return (methods !== undefined && methods.has(methodName));
   }
-  return true;
+  return false;
 }
 
 function typeToString(tp: any, services: RequiredParserServices): string | null {
@@ -270,7 +356,7 @@ function typeToString(tp: any, services: RequiredParserServices): string | null 
     }
   }
 
-  return null;
+  return typeAsString;
 }
 
 export = rule;

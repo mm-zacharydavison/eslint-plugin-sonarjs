@@ -103,6 +103,25 @@ ruleTester.run('Return values from functions without side effects should not be 
         "abc".replace(/ab/, myCallBack);
       }`,
     },
+    {
+      filename,
+      code: `
+      class MyClass {
+        myMethod() { return 1 }
+      }
+      const instance = new MyClass()
+      const foo = instance.myMethod()
+      `,
+      options: [{ custom: { methods: { MyClass: ['myMethod'] }}}]
+    },
+    {
+      filename,
+      code: `
+      function myFunction() { return 1 }
+      const foo = myFunction()
+      `,
+      options: [{ custom: { functions: ['myFunction'] }}],
+    }
   ],
   invalid: [
     {
@@ -203,5 +222,26 @@ ruleTester.run('Return values from functions without side effects should not be 
       }`,
       errors: 1,
     },
+    {
+      filename,
+      code: `
+      class MyClass {
+        myMethod() { return 1 }
+      }
+      const instance = new MyClass()
+      instance.myMethod()
+      `,
+      options: [{ custom: { methods: { MyClass: ['myMethod'] }}}],
+      errors: 1
+    },
+    {
+      filename,
+      code: `
+      function myFunction() { return 1 }
+      myFunction()
+      `,
+      options: [{ custom: { functions: ['myFunction'] }}],
+      errors: 1
+    }
   ],
 });
