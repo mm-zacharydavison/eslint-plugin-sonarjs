@@ -19,7 +19,8 @@
  */
 // https://sonarsource.github.io/rspec/#/rspec/S2201
 
-import type { TSESTree } from '@typescript-eslint/experimental-utils';
+import * as typescript from 'typescript';
+import type { ParserServices, TSESTree } from '@typescript-eslint/experimental-utils';
 import { isRequiredParserServices, RequiredParserServices } from '../utils/parser-services';
 import { Rule } from '../utils/types';
 import docsUrl from '../utils/docs-url';
@@ -190,6 +191,76 @@ interface CustomBlacklist {
   };
 }
 
+function functionCallExpression(
+  context: Rule.RuleContext,
+  node: TSESTree.Node,
+  services: ParserServices,
+  blacklist: CustomBlacklist,
+) {
+  const { parent } = node;
+  const call = node as TSESTree.CallExpression;
+  const { callee } = call;
+
+  if (callee.type !== 'Identifier') {
+    return;
+  }
+  if (parent && parent.type !== 'ExpressionStatement') {
+    return;
+  }
+
+  const functionName = callee.name;
+  if (isCustomFunction(functionName, blacklist)) {
+    const signature = services.program
+      .getTypeChecker()
+      .getResolvedSignature(
+        services.esTreeNodeToTSNodeMap.get(node) as typescript.CallLikeExpression,
+      );
+    if (!signature) {
+      return;
+    }
+    const returnType = services.program.getTypeChecker().getReturnTypeOfSignature(signature) as any;
+    if (returnType.intrinsicName === 'error') {
+      return;
+    }
+    context.report({
+      message: message(functionName),
+      node,
+    });
+  }
+}
+
+function methodCallExpression(
+  context: Rule.RuleContext,
+  node: TSESTree.Node,
+  services: ParserServices,
+  blacklist: CustomBlacklist,
+) {
+  const { parent } = node;
+  const call = node as TSESTree.CallExpression;
+  const { callee } = call;
+
+  if (callee.type !== 'MemberExpression') {
+    return;
+  }
+  if (parent && parent.type !== 'ExpressionStatement') {
+    return;
+  }
+
+  const methodName = context.getSourceCode().getText(callee.property);
+  const objectType = services.program
+    .getTypeChecker()
+    .getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(callee.object as TSESTree.Node));
+  if (
+    isBlacklistedMethod(methodName, objectType, services, blacklist) &&
+    !isReplaceWithCallback(methodName, call.arguments, services)
+  ) {
+    context.report({
+      message: message(methodName),
+      node,
+    });
+  }
+}
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
@@ -236,37 +307,14 @@ const rule: Rule.RuleModule = {
         const call = node as TSESTree.CallExpression;
         const { callee } = call;
 
-        if (callee.type === 'Identifier') {
-          const { parent } = node;
-          if (parent && parent.type === 'ExpressionStatement') {
-            const functionName = callee.name;
-            if (isCustomFunction(functionName, customBlacklist)) {
-              context.report({
-                message: message(functionName),
-                node,
-              });
-            }
-          }
-        }
-        if (callee.type === 'MemberExpression') {
-          const { parent } = node;
-          if (parent && parent.type === 'ExpressionStatement') {
-            const methodName = context.getSourceCode().getText(callee.property);
-            const objectType = services.program
-              .getTypeChecker()
-              .getTypeAtLocation(
-                services.esTreeNodeToTSNodeMap.get(callee.object as TSESTree.Node),
-              );
-            if (
-              isBlacklistedMethod(methodName, objectType, services, customBlacklist) &&
-              !isReplaceWithCallback(methodName, call.arguments, services)
-            ) {
-              context.report({
-                message: message(methodName),
-                node,
-              });
-            }
-          }
+        switch (callee.type) {
+          case 'Identifier':
+            functionCallExpression(context, node, services, customBlacklist);
+            break;
+          case 'MemberExpression':
+            methodCallExpression(context, node, services, customBlacklist);
+            break;
+          default:
         }
       },
     };

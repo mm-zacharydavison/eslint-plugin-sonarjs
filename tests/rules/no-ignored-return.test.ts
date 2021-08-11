@@ -17,11 +17,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { readFileSync } from 'fs';
+// import { readFileSync } from 'fs';
 import * as path from 'path';
 import * as rule from '../../src/rules/no-ignored-return';
 import { RuleTester } from '../rule-tester';
 
+const definitions = '../resources/no-ignored-return-definitions';
 const filename = path.resolve(`${__dirname}/../resources/file.ts`);
 const ruleTester = new RuleTester({
   parser: require.resolve('@typescript-eslint/parser'),
@@ -31,11 +32,14 @@ const ruleTester = new RuleTester({
   },
 });
 
-ruleTester.run('Return values from functions without side effects should not be ignored', rule, {
-  valid: [
-    {
-      filename,
-      code: `
+ruleTester.run(
+  'Return values from known functions without side effects should not be ignored',
+  rule,
+  {
+    valid: [
+      {
+        filename,
+        code: `
       function returnIsNotIgnored() {
         var x = "abc".concat("bcd");
 
@@ -43,10 +47,10 @@ ruleTester.run('Return values from functions without side effects should not be 
           return true;
         }
       }`,
-    },
-    {
-      filename,
-      code: `
+      },
+      {
+        filename,
+        code: `
       function noSupportForUserTypes() {
         class A {
           methodWithoutSideEffect() {
@@ -56,25 +60,25 @@ ruleTester.run('Return values from functions without side effects should not be 
 
         (new A()).methodWithoutSideEffect(); // OK
       }`,
-    },
-    {
-      filename,
-      code: `
+      },
+      {
+        filename,
+        code: `
       function unknownType(x: any) {
         x.foo();
       }`,
-    },
-    {
-      filename,
-      code: `
+      },
+      {
+        filename,
+        code: `
       function computedPropertyOnDestructuring(source: any, property: string) { // OK, used as computed property name
         const { [property]: _, ...rest } = source;
         return rest;
       }`,
-    },
-    {
-      filename,
-      code: `
+      },
+      {
+        filename,
+        code: `
       // "some" and "every" are sometimes used to provide early termination for loops
       // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach
       [1, 2, 3].some(function(el) {
@@ -85,113 +89,77 @@ ruleTester.run('Return values from functions without side effects should not be 
         return ! el !== 2;
       });
             `,
-    },
-    {
-      filename,
-      code: `
+      },
+      {
+        filename,
+        code: `
       function methodsOnString() {
         // "replace" with callback is OK
         "abc".replace(/ab/, () => "");
         "abc".replace(/ab/, function() {return ""});
       }`,
-    },
-    {
-      filename,
-      code: `
+      },
+      {
+        filename,
+        code: `
       function myCallBack() {}
       function methodsOnString() {
         // "replace" with callback is OK
         "abc".replace(/ab/, myCallBack);
       }`,
-    },
-    {
-      filename,
-      code: `
-      class MyClass {
-        myMethod() { return 1 }
-      }
-      const instance = new MyClass()
-      const foo = instance.myMethod()
-      `,
-      options: [{ custom: { methods: { MyClass: ['myMethod'] } } }],
-    },
-    {
-      filename,
-      code: `
-      function myFunction() { return 1 }
-      const foo = myFunction()
-      `,
-      options: [{ custom: { functions: ['myFunction'] } }],
-    },
-    {
-      filename,
-      code: `
-      function myFunction() { return 1 }
-      let foo
-      foo = myFunction()
-      `,
-      options: [{ custom: { functions: ['myFunction'] } }],
-    },
-    {
-      filename,
-      code: `
-      function myFunction() { return 1 }
-      perform(myFunction())
-      `,
-      options: [{ custom: { functions: ['myFunction'] } }],
-    },
-  ],
-  invalid: [
-    {
-      filename,
-      code: `
+      },
+    ],
+    invalid: [
+      {
+        filename,
+        code: `
       function methodsOnMath() {
         let x = -42;
         Math.abs(x);
       }`,
-      errors: [
-        {
-          message: `The return value of "abs" must be used.`,
-          line: 4,
-          endLine: 4,
-          column: 9,
-          endColumn: 20,
-        },
-      ],
-    },
-    {
-      filename,
-      code: `
+        errors: [
+          {
+            message: `The return value of "abs" must be used.`,
+            line: 4,
+            endLine: 4,
+            column: 9,
+            endColumn: 20,
+          },
+        ],
+      },
+      {
+        filename,
+        code: `
       function methodsOnMath() {
         let x = -42;
         Math.abs(x);
       }`,
-      errors: [
-        {
-          message: `The return value of "abs" must be used.`,
-          line: 4,
-          endLine: 4,
-          column: 9,
-          endColumn: 20,
-        },
-      ],
-    },
-    {
-      filename,
-      code: `
+        errors: [
+          {
+            message: `The return value of "abs" must be used.`,
+            line: 4,
+            endLine: 4,
+            column: 9,
+            endColumn: 20,
+          },
+        ],
+      },
+      {
+        filename,
+        code: `
       function mapOnArray() {
         let arr = [1, 2, 3];
         arr.map(function(x){ });
       }`,
-      errors: [
-        {
-          message: `Consider using "forEach" instead of "map" as its return value is not being used here.`,
-        },
-      ],
-    },
-    {
-      filename,
-      code: `
+        errors: [
+          {
+            message: `Consider using "forEach" instead of "map" as its return value is not being used here.`,
+          },
+        ],
+      },
+      {
+        filename,
+        code: `
       function methodsOnArray(arr1: any[]) {
         let arr = [1, 2, 3];
 
@@ -199,11 +167,11 @@ ruleTester.run('Return values from functions without side effects should not be 
 
         arr1.join(",");
       }`,
-      errors: 2,
-    },
-    {
-      filename,
-      code: `
+        errors: 2,
+      },
+      {
+        filename,
+        code: `
       function methodsOnString() {
         let x = "abc";
         x.concat("abc");
@@ -211,104 +179,154 @@ ruleTester.run('Return values from functions without side effects should not be 
         "abc".concat("bcd").charCodeAt(2);
         "abc".replace(/ab/, "d");
       }`,
-      errors: 4,
-    },
-    {
-      filename,
-      code: `
+        errors: 4,
+      },
+      {
+        filename,
+        code: `
       function methodsOnNumbers() {
         var num = 43 * 53;
         num.toExponential();
       }`,
-      errors: 1,
-    },
-    {
-      filename,
-      code: `
+        errors: 1,
+      },
+      {
+        filename,
+        code: `
       function methodsOnRegexp() {
         var regexp = /abc/;
         regexp.test("my string");
       }`,
-      errors: 1,
-    },
-    {
-      filename,
-      code: `
+        errors: 1,
+      },
+      {
+        filename,
+        code: `
       function methodsOnRegexp() {
         var regexp = /abc/;
         regexp.test("my string");
       }`,
-      errors: 1,
-    },
-    {
-      filename,
-      code: `
-      class MyClass {
-        myMethod() { return 1 }
-      }
+        errors: 1,
+      },
+    ],
+  },
+);
+
+ruleTester.run(
+  'Return values from custom methods defined in the config should not be ignored',
+  rule,
+  {
+    valid: [
+      {
+        // Ignore if assigned to value.
+        filename,
+        code: `
+      import { MyClass } from '${definitions}'
       const instance = new MyClass()
-      instance.myMethod()
+      const foo = instance.returnNumberTyped()
       `,
-      options: [{ custom: { methods: { MyClass: ['myMethod'] } } }],
-      errors: 1,
-    },
-    {
-      filename,
-      code: `
+        options: [{ custom: { methods: { MyClass: ['returnNumberTyped'] } } }],
+      },
+    ],
+    invalid: [
+      {
+        // Error if return value is not consumed.
+        filename,
+        code: `
+      import { MyClass } from '${definitions}'
+      (new MyClass()).returnNumberTyped()
+      `,
+        options: [{ custom: { methods: { MyClass: ['returnNumberTyped'] } } }],
+        errors: 1,
+      },
+      {
+        // Methods are not checked for return type.
+        filename,
+        code: `
+      import { MyClass } from '${definitions}'
+      const instance = new MyClass()
+      instance.returnNothing()
+      `,
+        options: [{ custom: { methods: { MyClass: ['returnNothing'] } } }],
+        errors: 1,
+      },
+    ],
+  },
+);
+
+ruleTester.run(
+  'Return values from custom functions defined in the config should not be ignored',
+  rule,
+  {
+    valid: [
+      {
+        // Ignore if assigned in declaration.
+        filename,
+        code: `
       function myFunction() { return 1 }
-      myFunction()
+      const foo = myFunction()
       `,
-      options: [{ custom: { functions: ['myFunction'] } }],
-      errors: 1,
-    },
-    {
-      filename,
-      code: `
-      import { myFunction } from 'some-module'
-      myFunction()
+        options: [{ custom: { functions: ['myFunction'] } }],
+      },
+      {
+        // Ignore if assigned to existing variable.
+        filename,
+        code: `
+      function myFunction() { return 1 }
+      let foo
+      foo = myFunction()
       `,
-      options: [{ custom: { functions: ['myFunction'] } }],
-      errors: 1,
-    },
-    {
-      filename,
-      code: `
-      import { createAction } from 'action-creators'
-
-      const middleware: Middleware = ({ dispatch, getState }) => {
-        return next => action => {
-          createAction(Action.MY_ACTION)
-        }
-      }
+        options: [{ custom: { functions: ['myFunction'] } }],
+      },
+      {
+        // Ignore if consumed as a parameter.
+        filename,
+        code: `
+      function myFunction() { return 1 }
+      perform(myFunction())
       `,
-      options: [{ custom: { functions: ['createAction'] } }],
-      errors: 1,
-    },
-    {
-      filename,
-      code: `
-      import { sendLog } from 'sendLog'
-
-      export default class RequestPage extends React.Component<{}, RequestPageState> {
-        componentDidMount() {
-          this.load().then(() => {
-            sendLog(BQEventTypes.web.TUTORIAL_DIALOG, {
-              bucket: 'treatment',
-              request_id: getId(request),
-              service_id: getId(request.service),
-            })
-          })
-        }
-      }
+        options: [{ custom: { functions: ['myFunction'] } }],
+      },
+      {
+        // Ignore if assigned to a value.
+        filename,
+        code: `
+      import { returnNumberTyped } from '${definitions}'
+      const foo = returnNumberTyped()
       `,
-      options: [{ custom: { functions: ['sendLog'] } }],
-      errors: 1,
-    },
-    {
-      filename,
-      code: readFileSync('tests/rules/meetsmore.js', 'utf8'),
-      options: [{ custom: { functions: ['sendLog'] } }],
-      errors: 2,
-    },
-  ],
-});
+        options: [{ custom: { functions: ['returnNumberTyped'] } }],
+      },
+      {
+        // No return.
+        filename,
+        code: `
+      import { nothing } from '${definitions}'
+      nothing()
+      `,
+        options: [{ custom: { functions: ['nothing'] } }],
+      },
+    ],
+    invalid: [
+      {
+        // Typed functions.
+        filename,
+        code: `
+      import { returnNumberTyped } from '${definitions}'
+      returnNumberTyped()
+      `,
+        options: [{ custom: { functions: ['returnNumberTyped'] } }],
+        errors: 1,
+      },
+      {
+        // Untyped functions.
+        filename,
+        code: `
+      import { returnNumberUntyped } from '${definitions}'
+      returnNumberUntyped()
+      `,
+        options: [{ custom: { functions: ['returnNumberUntyped'] } }],
+        errors: 1,
+      },
+    ],
+  },
+);
