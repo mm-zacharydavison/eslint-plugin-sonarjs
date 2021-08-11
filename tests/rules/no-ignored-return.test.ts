@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+import { readFileSync } from 'fs';
 import * as path from 'path';
 import * as rule from '../../src/rules/no-ignored-return';
 import { RuleTester } from '../rule-tester';
@@ -119,6 +120,23 @@ ruleTester.run('Return values from functions without side effects should not be 
       code: `
       function myFunction() { return 1 }
       const foo = myFunction()
+      `,
+      options: [{ custom: { functions: ['myFunction'] } }],
+    },
+    {
+      filename,
+      code: `
+      function myFunction() { return 1 }
+      let foo
+      foo = myFunction()
+      `,
+      options: [{ custom: { functions: ['myFunction'] } }],
+    },
+    {
+      filename,
+      code: `
+      function myFunction() { return 1 }
+      perform(myFunction())
       `,
       options: [{ custom: { functions: ['myFunction'] } }],
     },
@@ -259,12 +277,38 @@ ruleTester.run('Return values from functions without side effects should not be 
 
       const middleware: Middleware = ({ dispatch, getState }) => {
         return next => action => {
-          createAction(Action.MY_ACTION)(dispatch, getState, client)
+          createAction(Action.MY_ACTION)
         }
       }
       `,
       options: [{ custom: { functions: ['createAction'] } }],
-      errors: 1
-    }
+      errors: 1,
+    },
+    {
+      filename,
+      code: `
+      import { sendLog } from 'sendLog'
+
+      export default class RequestPage extends React.Component<{}, RequestPageState> {
+        componentDidMount() {
+          this.load().then(() => {
+            sendLog(BQEventTypes.web.TUTORIAL_DIALOG, {
+              bucket: 'treatment',
+              request_id: getId(request),
+              service_id: getId(request.service),
+            })
+          })
+        }
+      }
+      `,
+      options: [{ custom: { functions: ['sendLog'] } }],
+      errors: 1,
+    },
+    {
+      filename,
+      code: readFileSync('tests/rules/meetsmore.js', 'utf8'),
+      options: [{ custom: { functions: ['sendLog'] } }],
+      errors: 2,
+    },
   ],
 });
